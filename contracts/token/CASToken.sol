@@ -1,8 +1,8 @@
 pragma solidity ^0.5.0;
 
-import "./IERC20.sol";
+import "./ERC20/IERC20.sol";
+import "./WithSwap.sol";
 import "../../math/SafeMath.sol";
-
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -12,7 +12,7 @@ import "../../math/SafeMath.sol";
  * For a generic mechanism see {ERC20Mintable}.
  *
  */
-contract CASToken is IERC20 {
+contract CASToken is IERC20, WithSwap {
     using SafeMath for uint256;
 
     mapping (address => uint256) private _balances;
@@ -20,6 +20,11 @@ contract CASToken is IERC20 {
     mapping (address => mapping (address => uint256)) private _allowances;
 
     uint256 private _totalSupply;
+
+    struct Commitment {
+        uint256 amount;
+        uint256 commitment;
+    }
 
     function totalSupply() public view returns (uint256) {
         return _totalSupply;
@@ -41,6 +46,33 @@ contract CASToken is IERC20 {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
+
+    /**
+     * This is the first part of the atomic swap schema: first party has to commit to exchange
+     * tokens by sending a encrypted commitment.
+     * Example: John is doing a comitment for Marc to do a swap.
+     */
+    function record_commitment(address recipient, uint256 amount, bytes calldata commitment) public {
+        if (comitment) {
+            comitments[msg.sender][recipient] = Comitment(amount, comitment);
+        }
+    }
+
+    /**
+     * This is the second part of the atomic swap schema: second party has reveal agreeded
+     * commitment and execute both transfers.
+     * Example: Marc is executing a swap by verifying comitment details and our function
+     *   will do respective transfers on this token and the remote token.
+     */
+    function swap(address recipient, uint256 amountEx, uint256 amount, uint256 secret, IERC20 coin) public {
+        Commitment c = comitments[receipient][msg.sendr];    // check comitment exists
+        require(keccak(amount, secret, address(coin)) == c); // verify comitment
+        _transfer(recipient, msg.sender, amount);   // force John transfer
+        require(coin.transfer(recipient, amountEx),
+                "Marc transfer didn't work")        // force Marc transfer
+        delete comitments[receipient][msg.sendr];   // clean comitments to avoid doulbe spent
+    }
+
 
     /**
      * @dev See {IERC20-allowance}.
