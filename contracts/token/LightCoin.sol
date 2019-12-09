@@ -8,11 +8,11 @@ import "../ConvertLib.sol";
 // token, see: https://github.com/ConsenSys/Tokens. Cheers!
 
 contract MetaCoin {
-	mapping (address => uint256) balances;
+    mapping (address => uint256) balances;
     address public owner;
     uint256 public convertionRatio = 2;
 
-	event Transfer(address indexed from, address indexed to, uint256 value);
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
     // 1. let's define an owner
     // 2. set owner in the constructor
@@ -24,10 +24,10 @@ contract MetaCoin {
     //    -- this is a helper function to be used in moveCoins and sendCoin
     // 7. Understand the differance between tx.origing and msg.sender
 
-	constructor(address _owner) public {
+    constructor(address _owner) public {
         owner = _owner;
-		balances[tx.origin] = 10000;
-	}
+        balances[tx.origin] = 10000;
+    }
 
     function setOwner(address _newOwner) public {
         require (msg.sender == owner, "E001");
@@ -43,7 +43,7 @@ contract MetaCoin {
         require(balances[_from] >= _amount);
         balances[_to] += _amount;
         balances[_from] -= _amount;
-		emit Transfer(_from, _to, _amount);
+        emit Transfer(_from, _to, _amount);
     }
 
     function moveCoins(address _from, address _to, uint256 _amount) external {
@@ -52,16 +52,16 @@ contract MetaCoin {
     }
 
 
-	function sendCoin(address receiver, uint256 amount) public returns(bool) {
+    function sendCoin(address receiver, uint256 amount) public returns(bool) {
         _transfer(msg.sender, receiver, amount);
-		return true;
-	}
+        return true;
+    }
 
-	function getBalanceInEth(address addr) public view returns(uint256){
-		return ConvertLib.convert(getBalance(addr), convertionRatio);
-	}
+    function getBalanceInEth(address addr) public view returns(uint256){
+        return ConvertLib.convert(getBalance(addr), convertionRatio);
+    }
 
-	function getBalance(address addr) public view returns(uint256) {
-		return balances[addr];
-	}
+    function getBalance(address addr) public view returns(uint256) {
+        return balances[addr];
+    }
 }

@@ -2,7 +2,7 @@ pragma solidity ^0.5.0;
 
 import "./ERC20/IERC20.sol";
 import "./WithSwap.sol";
-import "../../math/SafeMath.sol";
+import "../math/SafeMath.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -15,16 +15,17 @@ import "../../math/SafeMath.sol";
 contract CASToken is IERC20, WithSwap {
     using SafeMath for uint256;
 
-    mapping (address => uint256) private _balances;
+    struct Commitment {
+        uint256 amount;
+        bytes32 commitment;
+    }
 
-    mapping (address => mapping (address => uint256)) private _allowances;
+    mapping (address => uint256) internal _balances;
+    mapping (address => mapping (address => uint256)) internal _allowances;
+    mapping (address => mapping (address => Commitment)) internal commitments;
 
     uint256 private _totalSupply;
 
-    struct Commitment {
-        uint256 amount;
-        uint256 commitment;
-    }
 
     function totalSupply() public view returns (uint256) {
         return _totalSupply;
@@ -52,25 +53,24 @@ contract CASToken is IERC20, WithSwap {
      * tokens by sending a encrypted commitment.
      * Example: John is doing a comitment for Marc to do a swap.
      */
-    function record_commitment(address recipient, uint256 amount, bytes calldata commitment) public {
-        if (comitment) {
-            comitments[msg.sender][recipient] = Comitment(amount, comitment);
-        }
+    function record_commitment(address recipient, uint256 amount, bytes32 commitment) external {
+        commitments[msg.sender][recipient] = Commitment(amount, commitment);
     }
 
     /**
      * This is the second part of the atomic swap schema: second party has reveal agreeded
      * commitment and execute both transfers.
-     * Example: Marc is executing a swap by verifying comitment details and our function
+     * Example: Marc is executing a swap by verifying commitment details and our function
      *   will do respective transfers on this token and the remote token.
      */
-    function swap(address recipient, uint256 amountEx, uint256 amount, uint256 secret, IERC20 coin) public {
-        Commitment c = comitments[receipient][msg.sendr];    // check comitment exists
-        require(keccak(amount, secret, address(coin)) == c); // verify comitment
+    function swap(address recipient, uint256 amountEx, uint256 amount, uint256 secret, IERC20 coin) external {
+        Commitment memory c = commitments[recipient][msg.sender];    // check commitment exists
+        uint n = amount + secret + uint(address(coin));
+        require(keccak256(_toBytes(n)) == c.commitment);  // verify commitment
         _transfer(recipient, msg.sender, amount);   // force John transfer
         require(coin.transfer(recipient, amountEx),
-                "Marc transfer didn't work")        // force Marc transfer
-        delete comitments[receipient][msg.sendr];   // clean comitments to avoid doulbe spent
+                "Marc transfer didn't work");       // force Marc transfer
+        delete commitments[recipient][msg.sender];  // clean commitments to avoid doulbe spent
     }
 
 
@@ -236,5 +236,10 @@ contract CASToken is IERC20, WithSwap {
     function _burnFrom(address account, uint256 amount) internal {
         _burn(account, amount);
         _allowances[msg.sender][account] = _allowances[msg.sender][account].sub(amount);
+    }
+
+    function _toBytes(uint256 x) private pure returns (bytes memory b) {
+        b = new bytes(32);
+        assembly { mstore(add(b, 32), x) }
     }
 }
